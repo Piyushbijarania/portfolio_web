@@ -114,7 +114,7 @@ const MatrixRain = ({ isActive }: { isActive: boolean }) => {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none opacity-[0.08] z-0"
+      className="fixed inset-0 pointer-events-none opacity-[0.22] z-0"
     />
   );
 };
