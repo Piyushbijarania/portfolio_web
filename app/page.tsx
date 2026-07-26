@@ -52,13 +52,95 @@ const getContributionColor = (val: number): string => {
   }
 };
 
+const MatrixRain = ({ isActive }: { isActive: boolean }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!isActive) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Matrix characters
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ';
+    const charArr = chars.split('');
+
+    const fontSize = 14;
+    const columns = Math.floor(canvas.width / fontSize) + 1;
+    const drops = Array(columns).fill(1);
+
+    const draw = () => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#00ff41'; // matrix green
+      ctx.font = `${fontSize}px monospace`;
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = charArr[Math.floor(Math.random() * charArr.length)];
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+
+        ctx.fillText(text, x, y);
+
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    };
+
+    const interval = setInterval(draw, 33);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, [isActive]);
+
+  if (!isActive) return null;
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none opacity-[0.08] z-0"
+    />
+  );
+};
+
 export default function Page() {
   const [isPaletteOpen, setIsPaletteOpen] = useState<boolean>(false)
   const [isResumeOpen, setIsResumeOpen] = useState<boolean>(false)
+  const [isMatrixActive, setIsMatrixActive] = useState<boolean>(false)
+  const [isTerminalMode, setIsTerminalMode] = useState<boolean>(false)
+  const [terminalLogs, setTerminalLogs] = useState<string[]>([
+    'Welcome to piyush.c interactive shell (v1.0.0)',
+    'Type "help" to see a list of commands, or "gui" to exit.'
+  ])
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedIndex, setSelectedIndex] = useState<number>(0)
   const [copiedText, setCopiedText] = useState<string>('')
   const [prTab, setPrTab] = useState<'merged' | 'open' | 'closed'>('merged')
+
+  const terminalBottomRef = useRef<HTMLDivElement>(null)
+
+  // Scroll to bottom when new logs are added
+  useEffect(() => {
+    if (isTerminalMode && terminalBottomRef.current) {
+      terminalBottomRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [terminalLogs, isTerminalMode])
   
   // Dynamic PR states with strongly-typed objects
   const [prsData, setPrsData] = useState<{ merged: PullRequest[]; open: PullRequest[]; closed: PullRequest[] }>({
@@ -410,6 +492,26 @@ export default function Page() {
         window.open('https://linkedin.com/in/piyush-choudhary-a83a3b255', '_blank')
         setIsPaletteOpen(false)
       }
+    },
+    {
+      id: 'toggle-matrix',
+      title: 'Toggle Matrix Rain Background',
+      subtitle: isMatrixActive ? 'Deactivate green digital rain streams' : 'Activate retro code canvas overlay',
+      icon: 'ri-contrast-drop-2-line',
+      action: () => {
+        setIsMatrixActive(prev => !prev)
+        setIsPaletteOpen(false)
+      }
+    },
+    {
+      id: 'switch-terminal',
+      title: 'Switch to Interactive Shell',
+      subtitle: 'Type commands directly (help, skills, contact, clear)',
+      icon: 'ri-terminal-line',
+      action: () => {
+        setIsTerminalMode(true)
+        setSearchQuery('')
+      }
     }
   ]
 
@@ -418,7 +520,75 @@ export default function Page() {
     cmd.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const handleTerminalSubmit = (cmdStr: string) => {
+    const trimmed = cmdStr.trim();
+    if (!trimmed) return;
+
+    const newLogs = [...terminalLogs, `guest@piyush.c:~$ ${trimmed}`];
+    const parts = trimmed.split(' ');
+    const cmd = parts[0].toLowerCase();
+
+    switch(cmd) {
+      case 'help':
+        newLogs.push(
+          'Available commands:',
+          '  skills     Display technical proficiencies',
+          '  contact    Show phone and email details',
+          '  projects   Print current and past work portfolio',
+          '  clear      Reset terminal output history',
+          '  gui        Switch back to search menu mode',
+          '  exit       Close command palette'
+        );
+        break;
+      case 'skills':
+        newLogs.push(
+          'TECHNICAL SKILLS:',
+          '  Languages:  Python, Java, JavaScript, TypeScript, Solidity',
+          '  Frameworks: React, Next.js, Node.js, FastAPI, Tailwind CSS',
+          '  AI/ML:      Gemini API, Groq API, MCP, Prompt Engineering',
+          '  Database:   PostgreSQL, MongoDB, NeonDB',
+          '  DevOps:     Git, GitHub Actions, Docker, AWS, Postman',
+          '  Blockchain: Solidity, Foundry, Smart Contracts, EVM Oracles'
+        );
+        break;
+      case 'contact':
+        newLogs.push(
+          'CONTACT INFO:',
+          '  Email: piyush.gag6513@gmail.com',
+          '  Phone: +91 9653816266'
+        );
+        break;
+      case 'projects':
+        newLogs.push(
+          'PROJECTS LIST:',
+          '  - OrbOracle (GSoC \'26) [Solidity, Foundry, Smart Contracts]',
+          '  - PIYX [FastAPI, Gemini API, ManimCE, FFmpeg]',
+          '  - SimAI [Next.js, Gemini 2.5 Pro, Drizzle ORM, Neon Postgres]'
+        );
+        break;
+      case 'clear':
+        setTerminalLogs([]);
+        setSearchQuery('');
+        return;
+      case 'gui':
+        setIsTerminalMode(false);
+        setSearchQuery('');
+        return;
+      case 'exit':
+        setIsPaletteOpen(false);
+        setSearchQuery('');
+        return;
+      default:
+        newLogs.push(`Command not found: "${cmd}". Type "help" for a list of available commands.`);
+    }
+
+    setTerminalLogs(newLogs);
+    setSearchQuery('');
+  };
+
   const handlePaletteKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isTerminalMode) return;
+    
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setSelectedIndex((prev) => (prev + 1) % filteredCommands.length)
@@ -442,6 +612,9 @@ export default function Page() {
       
       {/* Interactive cursor light beam */}
       <div className="cursor-glow-beam"></div>
+
+      {/* Falling Matrix rain background overlay */}
+      <MatrixRain isActive={isMatrixActive} />
 
       {/* Grid pattern overlay */}
       <div className="absolute inset-0 z-0 grid-bg-overlay pointer-events-none opacity-[0.8]"></div>
@@ -468,6 +641,19 @@ export default function Page() {
                 Resume
               </button>
             </div>
+
+            {/* Matrix Rain Toggle */}
+            <button 
+              onClick={() => setIsMatrixActive(prev => !prev)}
+              className={`p-1.5 rounded border text-xs transition-colors cursor-pointer flex items-center justify-center ${
+                isMatrixActive 
+                  ? 'border-green-800 bg-green-950/20 text-green-400 hover:bg-green-950/40 hover:border-green-700' 
+                  : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white hover:border-neutral-700'
+              }`}
+              title={isMatrixActive ? "Disable Matrix Rain" : "Enable Matrix Rain"}
+            >
+              <i className="ri-contrast-drop-2-line text-sm"></i>
+            </button>
 
             {/* Command Palette Trigger */}
             <button 
@@ -1046,59 +1232,95 @@ export default function Page() {
           >
             {/* Search Input bar */}
             <div className="flex items-center gap-3 border-b border-neutral-900 px-4 py-3">
-              <i className="ri-search-2-line text-neutral-400 text-lg"></i>
+              {isTerminalMode ? (
+                <span className="font-mono text-xs text-green-500 shrink-0 select-none">guest@piyush.c:~$</span>
+              ) : (
+                <i className="ri-search-2-line text-neutral-400 text-lg"></i>
+              )}
               <input 
                 ref={paletteInputRef}
                 type="text"
-                placeholder="Type a command or search..."
+                placeholder={isTerminalMode ? "Type command (e.g. help, skills, contact)..." : "Type a command or search..."}
                 value={searchQuery}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && isTerminalMode) {
+                    e.preventDefault();
+                    handleTerminalSubmit(searchQuery);
+                  }
+                }}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
-                  setSelectedIndex(0)
+                  if (!isTerminalMode) setSelectedIndex(0)
                 }}
-                className="w-full bg-transparent text-sm text-white placeholder-neutral-500 outline-none"
+                className="w-full bg-transparent text-sm text-white placeholder-neutral-500 outline-none font-mono"
               />
               <span className="rounded bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-500 font-mono uppercase">ESC</span>
             </div>
 
-            {/* Results listing */}
-            <div className="max-h-80 overflow-y-auto p-2">
-              {filteredCommands.length > 0 ? (
-                filteredCommands.map((cmd, idx) => {
-                  const isSelected = idx === selectedIndex
-                  return (
-                    <button 
-                      key={cmd.id}
-                      onClick={() => cmd.action()}
-                      onMouseEnter={() => setSelectedIndex(idx)}
-                      className={`w-full flex items-center gap-4 rounded-lg px-3 py-2.5 text-left transition-all ${
-                        isSelected ? 'bg-neutral-900 text-white' : 'text-neutral-400 hover:text-white'
-                      }`}
-                    >
-                      <i className={`${cmd.icon} text-lg ${isSelected ? 'text-white' : 'text-neutral-500'}`}></i>
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold">{cmd.title}</p>
-                        <p className="text-[10px] text-neutral-500 mt-0.5">{cmd.subtitle}</p>
-                      </div>
-                      {isSelected && (
-                        <span className="text-[10px] font-mono text-neutral-500">Enter ↵</span>
+            {/* Results listing / Terminal logs */}
+            <div className="max-h-80 overflow-y-auto p-4 font-mono text-xs text-neutral-300 space-y-1.5 bg-black/40">
+              {isTerminalMode ? (
+                <>
+                  {terminalLogs.map((log, index) => (
+                    <div key={index} className="whitespace-pre-wrap leading-relaxed">
+                      {log.startsWith('guest@piyush.c') ? (
+                        <span className="text-green-500 font-semibold">{log}</span>
+                      ) : log.startsWith('  ') ? (
+                        <span className="text-neutral-400">{log}</span>
+                      ) : log.startsWith('TECHNICAL') || log.startsWith('CONTACT') || log.startsWith('PROJECTS') || log.startsWith('Available') ? (
+                        <span className="text-blue-400 font-bold">{log}</span>
+                      ) : (
+                        log
                       )}
-                    </button>
-                  )
-                })
+                    </div>
+                  ))}
+                  <div ref={terminalBottomRef} />
+                </>
               ) : (
-                <div className="py-8 text-center text-xs text-neutral-500">
-                  No matching commands found.
-                </div>
+                filteredCommands.length > 0 ? (
+                  filteredCommands.map((cmd, idx) => {
+                    const isSelected = idx === selectedIndex
+                    return (
+                      <button 
+                        key={cmd.id}
+                        onClick={() => cmd.action()}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={`w-full flex items-center gap-4 rounded-lg px-3 py-2.5 text-left transition-all cursor-pointer ${
+                          isSelected ? 'bg-neutral-900 text-white' : 'text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        <i className={`${cmd.icon} text-lg ${isSelected ? 'text-white' : 'text-neutral-500'}`}></i>
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold">{cmd.title}</p>
+                          <p className="text-[10px] text-neutral-500 mt-0.5">{cmd.subtitle}</p>
+                        </div>
+                        {isSelected && (
+                          <span className="text-[10px] font-mono text-neutral-500">Enter ↵</span>
+                        )}
+                      </button>
+                    )
+                  })
+                ) : (
+                  <div className="py-8 text-center text-xs text-neutral-500">
+                    No matching commands found.
+                  </div>
+                )
               )}
             </div>
             
             {/* Footer hints */}
-            <div className="border-t border-neutral-900 px-4 py-2 flex items-center justify-between text-[10px] text-neutral-500 bg-neutral-950/40">
-              <div className="flex items-center gap-3">
-                <span>↑↓ to navigate</span>
-                <span>enter to select</span>
-              </div>
+            <div className="border-t border-neutral-900 px-4 py-2 flex items-center justify-between text-[10px] text-neutral-500 bg-neutral-950/40 font-mono">
+              {isTerminalMode ? (
+                <div className="flex items-center gap-3">
+                  <span>Type &apos;gui&apos; to switch back</span>
+                  <span>&apos;exit&apos; to close</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span>↑↓ to navigate</span>
+                  <span>enter to select</span>
+                </div>
+              )}
               <span>piyush.c</span>
             </div>
           </div>
