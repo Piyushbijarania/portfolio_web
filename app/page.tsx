@@ -489,7 +489,7 @@ export default function Page() {
       subtitle: 'Connect with Piyush Choudhary',
       icon: 'ri-linkedin-box-fill',
       action: () => {
-        window.open('https://linkedin.com/in/piyush-choudhary-a83a3b255', '_blank')
+        window.open('www.linkedin.com/in/piyush-choudhary-0x', '_blank')
         setIsPaletteOpen(false)
       }
     },
